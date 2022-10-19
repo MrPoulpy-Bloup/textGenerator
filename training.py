@@ -13,7 +13,7 @@ def training(listText: list,dimension: int) :
     for nbText, text in enumerate(listText) :
 
         # Ouverture du texte
-        with open(f'textes/{text}.txt','r',encoding='utf-8') as f :
+        with open(f'texts/{text}.txt','r',encoding='utf-8') as f :
             mots = f.read()
 
         # Suppression de certains caractères
@@ -29,7 +29,7 @@ def training(listText: list,dimension: int) :
 
         nbMots = len(mots)*dimension
 
-        # Crétion du dictionnaire de majuscules à partir du fichier json (s'il existe)
+        # Création du dictionnaire de majuscules à partir du fichier json (s'il existe)
         try :
             with open('json/majuscules.json','r',encoding='utf-8') as f :
                 file = f.read()
@@ -43,7 +43,17 @@ def training(listText: list,dimension: int) :
         # Ajout des mots commençant par une majuscule dans le dictionnaire
         # + mise en minuscule des mots
         for it, mot in enumerate(text) :
-            if mot.istitle() and not('!' in mot or '?' in mot or '.' in mot) and not(text[it+1] == '!' or text[it+1] == '?' or text[it+1] == '.') :
+            pointInMot = True
+            motsSuivantIsPoint = True
+
+            if not('!' in mot or '?' in mot or '.' in mot) :
+                pointInMot = False
+
+            if it < len(text)-1 :
+                if not(text[it+1] == '!' or text[it+1] == '?' or text[it+1] == '.') :
+                    motsSuivantIsPoint = False
+
+            if mot.istitle() and not pointInMot and not motsSuivantIsPoint :
                 mot = mot.lower()
                 majuscules['majuscules'].append(mot.replace('.','').replace('!','').replace('?',''))
 
@@ -65,10 +75,8 @@ def training(listText: list,dimension: int) :
         except FileNotFoundError :
             dicMots = {}
 
-    for k in range(1,dimension + 1) :
-        # appel de la fonction d'entraînement en fonction de la dimension
-        eval(f'training_dimension_{k}(mots, dicMots, nbMots, nbText)')
-        # TODO: Ajouter une boucle pour réunir toutes les fonctions en une et gérer plus que 3 dimensions
+        # Entraînement de 1 à dimension
+        trainingBoucle(mots,dicMots,nbMots,nbText,dimension)
 
         # Sauvegarde du dictionnaire dans le fichier json
         with open('json/mots.json','w',encoding='utf-8') as f :
@@ -78,7 +86,7 @@ def training(listText: list,dimension: int) :
     print('\nDone !')
 
 
-def training_dimension_1(mots: list, dicMots: dict, nbMots: int, nbText: int) :
+def training_dimension_1(mots: list, dicMots: dict, nbMots: int, nbText: int, dimension: int) :
     lastPct = None
 
     # Ajout des mots dans le dictionnaire
@@ -114,65 +122,62 @@ def training_dimension_1(mots: list, dicMots: dict, nbMots: int, nbText: int) :
         pct = k*100//nbMots
         if pct % 10 == 0 and pct != lastPct :
             os.system('cls')
-            print(f'nombre de mots dans le texte {nbText+1} : {nbMots//3}\n')
-            print(f'Progression : {k*100//nbMots}%')
+            print(f'nombre de mots dans le texte {nbText+1} : {nbMots//dimension}\n')
+            print(f'Progression : {pct}%')
         lastPct = pct
 
 
-def training_dimension_2(mots: list,dicMots: dict, nbMots: int, nbText: int) :
+def trainingBoucle(mots: list,dicMots: dict, nbMots: int, nbText: int, dimension: int) :
+    # Entraînement de la 1ère dimension
+    training_dimension_1(mots,dicMots,nbMots,nbText,dimension)
+
     lastPct = None
 
-    # Ajout des mots dans le dictionnaire
-    for k in range(len(mots)-2) :
-        if mots[k] is not None and mots[k+1] is not None and mots[k+2] is not None :
+    # Entraînement des dimensions de 2 à dimension
+    for dim in range(2,dimension+1) :
+        for k in range(len(mots)-dim) :
+            clef = ''
+            kIsNotNone = True
+            noPointinK = True
+            pointInLastK = False
 
-            if not('.' in mots[k] or '!' in mots[k] or '?' in mots[k]) and not('.' in mots[k+1] or '!' in mots[k+1] or '?' in mots[k+1]):
-                # mot et mot suivant ne contiennent pas des ponctuations de fin de phrase
-                if dicMots.get(f'{mots[k]} {mots[k+1]}') is not None :
-                    dicMots[f'{mots[k]} {mots[k+1]}'].append(mots[k+2].replace('.','').replace('?','').replace('!',''))
+            for i in range(dim) :
+                if mots[k+i] is None or mots[k+dim] is None :
+                    # Vérifie que la clef et la future valeur sont différentes de None
+                    kIsNotNone = False
+                    break
+                if kIsNotNone :
+                    if '.' in mots[k+i] or '!' in mots[k+i] or '?' in mots[k+i] :
+                        # Vérifie que la clef ne contient pas de ponctuation de fin de phrase
+                        noPointinK = False
+                        break
+                    if '.' in mots[k+dim] or '!' in mots[k+dim] or '?' in mots[k+dim] :
+                        # Vérifie si la valeur contient une ponctuation de fin de phrase
+                        pointInLastK = True
+
+                # Création de la clef : mots[k] + mots[k+1] + ... + mots[k+dim-1]
+                clef += mots[k + i]
+                if i != dim-1 :
+                    clef += ' '
+
+            if kIsNotNone and noPointinK :
+                # La clef et la future valeur sont différentes de None et la clef ne contient pas de ponctuation de fin de phrase
+                if dicMots.get(clef) is not None :
+                    dicMots[clef].append(mots[k+dim].replace('.','').replace('?','').replace('!',''))
                 else :
-                    dicMots[f'{mots[k]} {mots[k+1]}'] = mots[k+2].replace('.','').replace('?','').replace('!','').split()
+                    dicMots[clef] = [mots[k+dim].replace('.','').replace('?','').replace('!','')]
 
-            elif '.' in mots[k+1] or '!' in mots[k+1] or '?' in mots[k+1] and not('.' in mots[k] or '!' in mots[k] or '?' in mots[k]) :
-                # mot suivant contient une ponctuation de fin de phrase mais pas le mot actuel
-                if dicMots.get(f'{mots[k]} {mots[k+1]}'.replace('.','').replace('!','').replace('?','')) is not None :
-                    dicMots[f'{mots[k]} {mots[k+1]}'.replace('.','').replace('!','').replace('?','')].append(None)
+            elif kIsNotNone and pointInLastK :
+                # La clef et la valeur sont différentes de None et la future valeur contient une ponctuation de fin de phrase
+                if dicMots.get(clef.replace('.','').replace('!','').replace('?','')) is not None :
+                    dicMots[clef.replace('.','').replace('!','').replace('?','')].append(None)
                 else :
-                    dicMots[f'{mots[k]} {mots[k+1]}'.replace('.','').replace('!','').replace('?','')] = [None]
+                    dicMots[clef.replace('.','').replace('!','').replace('?','')] = [None]
 
-        # Progression de l'entraînement
-        pct = k*100//nbMots
-        if pct%10 == 0 and pct != lastPct and pct != 0 :
-            os.system('cls')
-            print(f'nombre de mots dans le texte {nbText+1} : {nbMots//3}\n')
-            print(f'Progression : {k*100//nbMots+30}%')
-        lastPct = pct
-
-def training_dimension_3(mots: list,dicMots: dict, nbMots: int, nbText: int) :
-    lastPct = None
-
-    # Ajout des mots dans le dictionnaire
-    for k in range(len(mots)-3) :
-        if mots[k] is not None and mots[k+1] is not None and mots[k+2] is not None and mots[k+3] is not None :
-
-            if not('.' in mots[k] or '!' in mots[k] or '?' in mots[k]) and not('.' in mots[k+1] or '!' in mots[k+1] or '?' in mots[k+1]) and not('.' in mots[k+2] or '!' in mots[k+2] or '?' in mots[k+2]) :
-                # mot actuel, mot suivant et 2ème mot suivant ne contiennent pas des ponctuations de fin de phrase
-                if dicMots.get(f'{mots[k]} {mots[k+1]} {mots[k+2]}') is not None :
-                    dicMots[f'{mots[k]} {mots[k+1]} {mots[k+2]}'].append(mots[k+3].replace('.','').replace('?','').replace('!',''))
-                else :
-                    dicMots[f'{mots[k]} {mots[k+1]} {mots[k+2]}'] = mots[k+3].replace('.','').replace('?','').replace('!','').split()
-
-            elif '.' in mots[k+2] or '!' in mots[k+2] or '?' in mots[k+2] and not('.' in mots[k] or '!' in mots[k] or '?' in mots[k]) and not('.' in mots[k+1] or '!' in mots[k+1] or '?' in mots[k+1]) :
-                # 2ème mot suivant contient une ponctuation de fin de phrase mais pas le mot actuel ni le mot suivant
-                if dicMots.get(f'{mots[k]} {mots[k+1]} {mots[k+2]}'.replace('.','').replace('!','').replace('?','')) is not None :
-                    dicMots[f'{mots[k]} {mots[k+1]} {mots[k+2]}'.replace('.','').replace('!','').replace('?','')].append(None)
-                else :
-                    dicMots[f'{mots[k]} {mots[k+1]} {mots[k+2]}'.replace('.','').replace('!','').replace('?','')] = [None]
-
-        # Progression de l'entraînement
-        pct = k*100//nbMots
-        if pct%10 == 0 and pct != lastPct and pct != 0 :
-            os.system('cls')
-            print(f'nombre de mots dans le texte {nbText+1} : {nbMots//3}\n')
-            print(f'Progression : {k*100//nbMots+60}%')
-        lastPct = pct
+            # Progression de l'entraînement
+            pct = k*100//nbMots + (dim-1)*100//dimension
+            if pct % 10 == 0 and pct != lastPct :
+                os.system('cls')
+                print(f'nombre de mots dans le texte {nbText+1} : {nbMots//dimension}\n')
+                print(f'Progression : {pct}%')
+            lastPct = pct

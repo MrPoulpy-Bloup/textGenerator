@@ -7,11 +7,11 @@ def main() :
 
     if inp == 't' :
         listText = [
-            'textesPhilo2'
+            'textsPhilo'
         ]
         training(listText, int(input('dimension de l\'entraînement :\n')))
     elif inp == 'g' :
-        generation(int(input('nb de phrases à générer : \n'))) # , int(input('dimension de la génération :\n')))
+        generation(int(input('nb de phrases à générer : \n')), 5) # , int(input('dimension de la génération :\n')))
 
 if __name__ == '__main__' :
     main()

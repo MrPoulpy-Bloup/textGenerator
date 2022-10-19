@@ -6,7 +6,8 @@ def generation(nb: int, dimension: int = 3) :
     Genère un nombre de phrases aléatoires à partir d'un texte.
 
     :param nb : Nombre de phrases à générer.
-    :param dimension : Dimension de la génération.
+    :param dimension : Dimension de la génération (par défaut : 3).
+    Maximum recommandé : 5.
     :return: Affiche les phrases générées.
     '''
 
@@ -22,70 +23,44 @@ def generation(nb: int, dimension: int = 3) :
 
         # Choix aléatoire d'un mot de début de phrase
         lastWord = choice(majuscules['majuscules'])
-        nextWord = ''
         lastestWords = []
         phrase = ''
+        clef = ''
+        phraseLimite = False
 
         while lastWord is not None :
 
             # Ajout du mot à la phrase
             phrase += f' {lastWord}'
 
+            if len(phrase.split(' ')) > 14 and None in dicMots[lastWord] :
+                # Limite la phrase à 15 mots
+                phraseLimite = True
+                break
+
             if dicMots[lastWord] == [None] :
                 break
 
-            if dimension == 3 :
+            if len(lastestWords) < dimension :
+                lastestWords.append(lastWord)
 
-                if len(lastestWords) < dimension :
-                    lastestWords.append(lastWord)
-                else :
-                    lastestWords.pop()
-                    lastestWords.append(lastWord)
+            else :
+                lastestWords.pop(0)
+                lastestWords.append(lastWord)
 
-                if len(lastestWords) < dimension :
-                    nextWord = choice(list(dicMots[lastWord]))
-                    lastestWords.append(nextWord)
+            for dim in range(dimension) :
+                clef = ' '.join(lastestWords[dim:])
+                if dicMots.get(clef) is not None :
+                    break
 
-                else :
+            lastWord = choice(list(dicMots[clef]))
 
-                    if dicMots.get(f'{lastestWords[0]} {lastestWords[1]} {lastestWords[2]}') is not None :
-                        nextWord = choice(list(dicMots[f'{lastestWords[0]} {lastestWords[1]} {lastestWords[2]}']))
+        phrase = f'{phrase.lstrip().capitalize()}.'
 
-                    elif dicMots.get(f'{lastestWords[1]} {lastestWords[2]}') is not None :
-                        nextWord = choice(list(dicMots[f'{lastestWords[1]} {lastestWords[2]}']))
+        if phraseLimite :
+            phrase += ' (phrase limitée)'
 
-                    else :
-                        nextWord = choice(list(dicMots[lastWord]))
+        print(f'phrase {n+1} : {phrase}')
 
-                    lastestWords.pop(0)
-                    lastestWords.append(nextWord)
-
-            elif dimension == 1 :
-                # Choix aléatoire d'un mot suivant
-                nextWord=choice(list(dicMots[lastWord]))
-
-            elif dimension == 2 :
-
-                if len(lastestWords) < dimension :
-                    lastestWords.append(lastWord)
-                else :
-                    lastestWords.pop()
-                    lastestWords.append(lastWord)
-
-                if len(lastestWords) < dimension :
-                    nextWord=choice(list(dicMots[lastWord]))
-                    lastestWords.append(nextWord)
-                else :
-
-                    if dicMots.get(f'{lastestWords[0]} {lastestWords[1]}') is not None :
-                        nextWord=choice(list(dicMots[f'{lastestWords[0]} {lastestWords[1]}']))
-
-                    else :
-                        nextWord=choice(list(dicMots[lastWord]))
-
-                    lastestWords.pop(0)
-                    lastestWords.append(nextWord)
-
-            lastWord = nextWord
-
-        print(f'phrase {n + 1} : {phrase.lstrip().capitalize()}.')
+        with open('résultats/résultats.txt','a',encoding='utf-8') as f :
+            f.write(f'phrase {n+1} : {phrase}\n')
